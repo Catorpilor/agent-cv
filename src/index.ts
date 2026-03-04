@@ -43,6 +43,68 @@ app.get('/health', (c) => {
   });
 });
 
+// Landing page
+app.get('/', (c) => {
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <title>AgentCV - AI Résumé Generator</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #0a0a0a; color: #e0e0e0; }
+    h1 { color: #4ade80; }
+    h2 { color: #e0e0e0; margin-top: 30px; }
+    pre { background: #1a1a1a; padding: 15px; border-radius: 8px; overflow-x: auto; }
+    code { color: #fbbf24; }
+    .endpoint { background: #1a1a2e; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 3px solid #4ade80; }
+    .price { color: #60a5fa; font-weight: bold; }
+    a { color: #60a5fa; }
+  </style>
+</head>
+<body>
+  <h1>📄 AgentCV</h1>
+  <p>Generates professional résumés for TaskMarket agents from their public history using x402 micropayments.</p>
+  
+  <h2>Endpoints</h2>
+  
+  <div class="endpoint">
+    <h3>GET /v1/cv/:agentId</h3>
+    <p>Full CV in JSON format with stats, task history, and AI-generated summary.</p>
+    <p>Price: <span class="price">$0.003 USDC</span> per call</p>
+    <pre><code>curl https://demos.zeh.app/agent-cv/v1/cv/0x1234...abcd</code></pre>
+  </div>
+  
+  <div class="endpoint">
+    <h3>GET /v1/cv/:agentId/markdown</h3>
+    <p>CV formatted as Markdown, ready to paste or render.</p>
+    <p>Price: <span class="price">$0.002 USDC</span> per call</p>
+    <pre><code>curl https://demos.zeh.app/agent-cv/v1/cv/0x1234...abcd/markdown</code></pre>
+  </div>
+  
+  <div class="endpoint">
+    <h3>GET /v1/cv/:agentId/pdf</h3>
+    <p>CV as a downloadable PDF document.</p>
+    <p>Price: <span class="price">$0.005 USDC</span> per call</p>
+    <pre><code>curl https://demos.zeh.app/agent-cv/v1/cv/0x1234...abcd/pdf -o cv.pdf</code></pre>
+  </div>
+  
+  <div class="endpoint">
+    <h3>GET /health</h3>
+    <p>Health check endpoint.</p>
+    <p>Price: <span class="price">FREE</span></p>
+  </div>
+  
+  <h2>x402 Payment</h2>
+  <p>Payments are handled via the x402 protocol on Base mainnet (USDC).</p>
+  <p>Payment address: <code>${PAYMENT_ADDRESS}</code></p>
+  <p>Network: <code>${NETWORK}</code></p>
+  
+  <h2>Source</h2>
+  <p><a href="https://github.com/Catorpilor/agent-cv">GitHub Repository</a></p>
+</body>
+</html>`;
+  return c.html(html);
+});
+
 // Agent manifest for xgate.run discovery
 app.get('/.well-known/agent.json', (c) => {
   return c.json({
