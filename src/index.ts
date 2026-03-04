@@ -49,6 +49,11 @@ app.get('/.well-known/agent.json', (c) => {
     name: 'AgentCV',
     version: '1.0.0',
     description: 'Generates professional résumés for TaskMarket agents from their public history',
+    payment: {
+      network: NETWORK,
+      address: PAYMENT_ADDRESS,
+      facilitator: FACILITATOR_URL,
+    },
     endpoints: [
       {
         path: '/v1/cv/:agentId',
@@ -69,29 +74,60 @@ app.get('/.well-known/agent.json', (c) => {
         description: 'CV as downloadable PDF',
       },
     ],
-    network: NETWORK,
     contact: 'https://github.com/Catorpilor/agent-cv',
   });
 });
 
-// Payment middleware setup
-const facilitator = new HTTPFacilitatorClient(FACILITATOR_URL, NETWORK);
-const scheme = new ExactEvmScheme(NETWORK);
+// Setup x402 payment middleware
+const facilitatorClient = new HTTPFacilitatorClient({ url: FACILITATOR_URL });
 
-// Helper to create payment middleware
-const createPayment = (priceUsdc: number) => {
-  const baseUnits = Math.round(priceUsdc * 1_000_000).toString();
-  return paymentMiddlewareFromConfig({
-    network: NETWORK,
-    payTo: PAYMENT_ADDRESS,
-    asset: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', // USDC on Base
-    maxAmountRequired: baseUnits,
-    resource: '*',
-  }, {
-    facilitatorClient: facilitator,
-    schemes: [scheme],
-  });
+const paidRoutes = {
+  'GET /v1/cv/:agentId': {
+    accepts: [
+      {
+        scheme: 'exact',
+        price: '$0.003',
+        network: NETWORK,
+        payTo: PAYMENT_ADDRESS,
+      },
+    ],
+    description: 'Full CV in JSON format ($0.003 USDC)',
+    mimeType: 'application/json',
+  },
+  'GET /v1/cv/:agentId/markdown': {
+    accepts: [
+      {
+        scheme: 'exact',
+        price: '$0.002',
+        network: NETWORK,
+        payTo: PAYMENT_ADDRESS,
+      },
+    ],
+    description: 'CV in Markdown format ($0.002 USDC)',
+    mimeType: 'text/markdown',
+  },
+  'GET /v1/cv/:agentId/pdf': {
+    accepts: [
+      {
+        scheme: 'exact',
+        price: '$0.005',
+        network: NETWORK,
+        payTo: PAYMENT_ADDRESS,
+      },
+    ],
+    description: 'CV as downloadable PDF ($0.005 USDC)',
+    mimeType: 'application/pdf',
+  },
 };
+
+const evmScheme = new ExactEvmScheme();
+
+// Apply payment middleware
+app.use(paymentMiddlewareFromConfig(
+  paidRoutes,
+  facilitatorClient,
+  [{ network: NETWORK, server: evmScheme }]
+));
 
 // Validate agent ID (0x address)
 const validateAgentId = (agentId: string): boolean => {
@@ -99,7 +135,7 @@ const validateAgentId = (agentId: string): boolean => {
 };
 
 // GET /v1/cv/:agentId - Full JSON CV ($0.003)
-app.get('/v1/cv/:agentId', createPayment(0.003), async (c) => {
+app.get('/v1/cv/:agentId', async (c) => {
   const agentId = c.req.param('agentId');
   
   if (!validateAgentId(agentId)) {
@@ -123,7 +159,7 @@ app.get('/v1/cv/:agentId', createPayment(0.003), async (c) => {
 });
 
 // GET /v1/cv/:agentId/markdown - Markdown CV ($0.002)
-app.get('/v1/cv/:agentId/markdown', createPayment(0.002), async (c) => {
+app.get('/v1/cv/:agentId/markdown', async (c) => {
   const agentId = c.req.param('agentId');
   
   if (!validateAgentId(agentId)) {
@@ -144,7 +180,7 @@ app.get('/v1/cv/:agentId/markdown', createPayment(0.002), async (c) => {
 });
 
 // GET /v1/cv/:agentId/pdf - PDF CV ($0.005)
-app.get('/v1/cv/:agentId/pdf', createPayment(0.005), async (c) => {
+app.get('/v1/cv/:agentId/pdf', async (c) => {
   const agentId = c.req.param('agentId');
   
   if (!validateAgentId(agentId)) {
