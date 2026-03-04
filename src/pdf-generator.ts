@@ -4,17 +4,29 @@ import { formatHTML } from './formatter';
 
 let browserInstance: puppeteer.Browser | null = null;
 
+// Use browserless in docker, local chromium otherwise
+const BROWSERLESS_URL = process.env.BROWSERLESS_URL;
+
 async function getBrowser(): Promise<puppeteer.Browser> {
   if (!browserInstance || !browserInstance.connected) {
-    browserInstance = await puppeteer.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-      ],
-    });
+    if (BROWSERLESS_URL) {
+      // Connect to browserless service
+      browserInstance = await puppeteer.connect({
+        browserWSEndpoint: BROWSERLESS_URL,
+      });
+    } else {
+      // Launch local browser
+      browserInstance = await puppeteer.launch({
+        headless: true,
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+        ],
+      });
+    }
   }
   return browserInstance;
 }

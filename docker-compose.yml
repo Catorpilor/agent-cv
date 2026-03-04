@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  agent-cv:
+    build: .
+    container_name: agent-cv
+    restart: unless-stopped
+    ports:
+      - "3404:3404"
+    environment:
+      - PORT=3404
+      - PAYMENT_ADDRESS=${PAYMENT_ADDRESS:-0x85261B8fDDc9c15Abb91c3DFf9f670472825167F}
+      - FACILITATOR_URL=${FACILITATOR_URL:-https://facilitator.payai.network}
+      - NETWORK=${NETWORK:-eip155:8453}
+      - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+    depends_on:
+      - browserless
+    networks:
+      - agent-cv-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3404/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  browserless:
+    image: browserless/chrome:latest
+    container_name: agent-cv-browserless
+    restart: unless-stopped
+    environment:
+      - MAX_CONCURRENT_SESSIONS=5
+      - CONNECTION_TIMEOUT=60000
+      - MAX_QUEUE_LENGTH=10
+    ports:
+      - "3405:3000"
+    networks:
+      - agent-cv-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  agent-cv-net:
+    driver: bridge
