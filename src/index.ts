@@ -1,7 +1,7 @@
 import { config } from 'dotenv';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { paymentMiddlewareFromConfig } from '@x402/hono';
+import { paymentMiddleware, x402ResourceServer } from '@x402/hono';
 import { HTTPFacilitatorClient } from '@x402/core/server';
 import { ExactEvmScheme } from '@x402/evm/exact/server';
 
@@ -144,19 +144,7 @@ app.get('/.well-known/agent.json', (c) => {
 const facilitatorClient = new HTTPFacilitatorClient({ url: FACILITATOR_URL });
 
 const paidRoutes = {
-  'GET /v1/cv/:agentId': {
-    accepts: [
-      {
-        scheme: 'exact',
-        price: '$0.003',
-        network: NETWORK,
-        payTo: PAYMENT_ADDRESS,
-      },
-    ],
-    description: 'Full CV in JSON format ($0.003 USDC)',
-    mimeType: 'application/json',
-  },
-  'GET /v1/cv/:agentId/markdown': {
+  'GET /v1/cv/*/markdown': {
     accepts: [
       {
         scheme: 'exact',
@@ -168,7 +156,7 @@ const paidRoutes = {
     description: 'CV in Markdown format ($0.002 USDC)',
     mimeType: 'text/markdown',
   },
-  'GET /v1/cv/:agentId/pdf': {
+  'GET /v1/cv/*/pdf': {
     accepts: [
       {
         scheme: 'exact',
@@ -180,16 +168,26 @@ const paidRoutes = {
     description: 'CV as downloadable PDF ($0.005 USDC)',
     mimeType: 'application/pdf',
   },
+  'GET /v1/cv/*': {
+    accepts: [
+      {
+        scheme: 'exact',
+        price: '$0.003',
+        network: NETWORK,
+        payTo: PAYMENT_ADDRESS,
+      },
+    ],
+    description: 'Full CV in JSON format ($0.003 USDC)',
+    mimeType: 'application/json',
+  },
 };
 
 const evmScheme = new ExactEvmScheme();
+const resourceServer = new x402ResourceServer(facilitatorClient)
+  .register(NETWORK, evmScheme);
 
 // Apply payment middleware
-app.use(paymentMiddlewareFromConfig(
-  paidRoutes,
-  facilitatorClient,
-  [{ network: NETWORK, server: evmScheme }]
-));
+app.use(paymentMiddleware(paidRoutes, resourceServer));
 
 // Validate agent ID (0x address)
 const validateAgentId = (agentId: string): boolean => {
